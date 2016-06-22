@@ -22,6 +22,9 @@ type
     ActiviteLogENTRY: TStringField;
     UTIL: TADOQuery;
     ADOCommand: TADOCommand;
+    ActiviteLogCActiveID: TIntegerField;
+    IsRunning: TADOQuery;
+    AppCaption: TADOQuery;
     Function VersionNumber : String;
   private
     { Private declarations }

@@ -54,10 +54,20 @@ type
     ck_PROCESSING: TRzCheckBox;
     ck_TALLY_OPEN: TRzCheckBox;
     RzDBLabel4: TRzDBLabel;
-    SB: TStatusBar;
     Locked: TImage;
     process: TImage;
     Placement: TFormPlacement;
+    RzDBLabel5: TRzDBLabel;
+    DBMemo1: TDBMemo;
+    Label4: TLabel;
+    Label5: TLabel;
+    Label6: TLabel;
+    btnREFRESH: TRzBitBtn;
+    btnSAVE: TRzBitBtn;
+    Label7: TLabel;
+    smsMSG: TMemo;
+    nothing: TImage;
+    SB: TPanel;
     procedure FormCreate(Sender: TObject);
     procedure btnCLOSEClick(Sender: TObject);
     procedure cb_DistrictChange(Sender: TObject);
@@ -69,6 +79,8 @@ type
     procedure cb_PHONEChange(Sender: TObject);
     procedure btn_NEW_PHONEClick(Sender: TObject);
     procedure bnt_UNLOCKClick(Sender: TObject);
+    procedure btnREFRESHClick(Sender: TObject);
+    procedure btnSAVEClick(Sender: TObject);
   private
     { Private declarations }
   public
@@ -88,7 +100,7 @@ procedure TMAIN_FORM.FormCreate(Sender: TObject);
 var
   ct : integer;
 begin
-  SB.SimpleText := 'VERSION: ' + DM1.VersionNumber;
+  SB.Caption := ' VERSION: ' + DM1.VersionNumber;
   DM1.ADOConnection.Connected := True;
 
   for ct := 1 to 7 do
@@ -159,24 +171,20 @@ begin
 
   cb_PHONE.Items.Clear;
   DM1.UTIL.Close;
-  DM1.UTIL.SQL.Text := 'SELECT PHONE1 FROM Users WHERE RTRIM(PHONE1) > '''' ORDER BY PHONE1';
+  DM1.UTIL.SQL.Text := 'SELECT DISTINCT PHONE FROM vw_ALL_PHONES WHERE PHONE IS NOT NULL ORDER BY PHONE';
   with DM1.UTIL do
     begin
       Open;
       while not DM1.UTIL.eof do
         begin
-          cb_PHONE.Items.Add(DM1.UTIL.FieldByName('PHONE1').AsString);
+          cb_PHONE.Items.Add(DM1.UTIL.FieldByName('PHONE').AsString);
           DM1.UTIL.Next;
         end;
       Close;
     end;
-
-   DM1.UTIL.Close;
-   DM1.UTIL.SQL.Text := 'SELECT TOP 1 CAST(TALLY_OPEN AS INT) AS TALLY_OPEN, CAST(PROCESSING AS INT) AS PROCESSING FROM Config';
-   DM1.UTIL.Open;
-        CK_PROCESSING.Checked := (DM1.UTIL.FieldByName('PROCESSING').AsInteger = 1);
-        CK_TALLY_OPEN.Checked := (DM1.UTIL.FieldByName('TALLY_OPEN').AsInteger = 1);
-   DM1.UTIL.Close;
+   cb_District.ItemIndex := 0;
+   cb_DistrictChange(Sender);
+   btnREFRESHClick(Sender);
 end;
 
 procedure TMAIN_FORM.btnCLOSEClick(Sender: TObject);
@@ -210,7 +218,7 @@ begin
   if rg_STATUS.ItemIndex = 1 then
    DM1.POLLS.Filter := 'POLLOC = NULL';
   if rg_STATUS.ItemIndex = 2 then
-   DM1.POLLS.Filter := '((TELEPHONE > '''') AND (SAV < 2))';
+   DM1.POLLS.Filter := '((ID > 0) AND (SAV < 2))';
   if rg_STATUS.ItemIndex = 3 then
    DM1.POLLS.Filter := '((SAV = 2) AND (DONE = 1))';
 
@@ -222,7 +230,51 @@ end;
 procedure TMAIN_FORM.Timer1Timer(Sender: TObject);
 var
   savePoll : TBookmark;
+  Running  : Integer;
 begin
+
+   if not CK_PROCESSING.Checked then
+     begin
+        SB.Color := clRed;
+        SB.Font.Color := clYellow;
+        SB.Caption := ' VERSION: ' + DM1.VersionNumber + '  -  SMS OFF-LINE';
+     end
+   else
+     begin
+       if CK_TALLY_OPEN.Checked then
+         begin
+           SB.Color := clGreen;
+           SB.Font.Color := clWhite;
+           SB.Caption := ' VERSION: ' + DM1.VersionNumber + '  -  ACCEPTING SMS TALLY RESULTS';
+         end
+       else
+         begin
+           SB.Color := clYellow;
+           SB.Font.Color := clRed;
+           SB.Caption := ' VERSION: ' + DM1.VersionNumber + '  -  SMS NOT PROCESSING TALLIES';
+         end;
+     end;
+
+  TRY
+  DM1.AppCaption.Close;
+  DM1.AppCaption.Open;
+  MAIN_FORM.Caption := DM1.AppCaption.FieldByName('Caption').AsString;
+  DM1.AppCaption.Close;
+  EXCEPT
+    MAIN_FORM.Caption :=  'EBC SMS Tally Management';
+  END;
+
+  DM1.IsRunning.Close;
+  DM1.IsRunning.Open;
+  Running := DM1.IsRunning.FieldByName('Running').AsInteger;
+  DM1.IsRunning.Close;
+
+  if Running <> 1 then
+    begin
+      SB.Color := clRed;
+      SB.Font.Color := clYellow;
+      SB.Caption := ' VERSION: ' + DM1.VersionNumber + '  -  * * * SMS NOT PROCESSING MESSAGES * * *!';
+    end;
 
   if DM1.POLLS.Active then
     begin
@@ -233,12 +285,13 @@ begin
         DM1.POLLS.GotoBookmark(SavePoll);
       if DM1.CActive.Active then DM1.CActive.Requery;
 
-      process.visible := (DM1.CActive.FieldByname('polloc').AsString > '');
-
+      Process.visible := (DM1.CActive.FieldByname('polloc').AsString > '');
       Locked.Visible := DM1.CActive.Active and (DM1.CActive.FieldByname('SAV').AsInteger = 2);
-      bnt_UNLOCK.Enabled := Locked.Visible;
-      btn_NEW_PHONE.Enabled := not bnt_UNLOCK.Enabled;
+      Nothing.Visible := ((not Locked.Visible) and (not Process.visible));
 
+      bnt_UNLOCK.Enabled := Locked.Visible;
+      btn_NEW_PHONE.Enabled := not Locked.Visible;
+      TABSChange(Nil);
 
       LockWindowUpdate(0);
     end;
@@ -248,23 +301,25 @@ procedure TMAIN_FORM.POLLSRowChanged(Sender: TObject);
 begin
   Process.visible := False;
   Locked.visible := False;
+  Nothing.visible := False;
   Application.ProcessMessages;
   DM1.CActive.Close;
-  DM1.CActive.Parameters[0].Value := DM1.POLLS.FieldByName('POLL').AsString;
+  DM1.CActive.Parameters[0].Value := DM1.POLLS.FieldByName('PID').AsString;
   DM1.CActive.Open;
 
+  //Locked.Visible := DM1.CActive.Active and (DM1.CActive.FieldByname('SAV').AsInteger = 2);
+
+  Process.visible := (DM1.CActive.FieldByname('polloc').AsString > '');
   Locked.Visible := DM1.CActive.Active and (DM1.CActive.FieldByname('SAV').AsInteger = 2);
+  Nothing.Visible := ((not Locked.Visible) and (not Process.visible));
+
+
   bnt_UNLOCK.Enabled := Locked.Visible;
   btn_NEW_PHONE.Enabled := not bnt_UNLOCK.Enabled;
 
-  if TABS.ActivePage = TabLog then
-    begin
-        if DM1.POLLS.FieldByName('TELEPHONE').AsString > '' then
-          DM1.ActiviteLog.Filter := 'ENTRY LIKE ''' + DM1.POLLS.FieldByName('TELEPHONE').AsString + '%'''
-        else DM1.ActiviteLog.Filter := 'ENTRY LIKE ''SERVER%''';
-        DM1.ActiviteLog.Open;
-    end
-  else DM1.ActiviteLog.Close;
+  Nothing.Visible := ((not Locked.Visible) and (not Process.visible));
+
+  TABSChange(Nil);
 
 end;
 
@@ -274,9 +329,16 @@ procedure TMAIN_FORM.TABSChange(Sender: TObject);
 begin
   if (TABS.ActivePage = TabLog) then
     begin
-        if (DM1.POLLS.Active AND (DM1.POLLS.FieldByName('TELEPHONE').AsString > '')) then
-          DM1.ActiviteLog.Filter := 'ENTRY LIKE ''' + DM1.POLLS.FieldByName('TELEPHONE').AsString + '%'''
-        else DM1.ActiviteLog.Filter := 'ENTRY LIKE ''SERVER%''';
+        DM1.ActiviteLog.Close;
+        if (DM1.POLLS.Active AND (DM1.POLLS.FieldByName('ID').AsString > '')
+          AND ((DM1.POLLS.FieldByName('TELEPHONE').AsString > '') OR (DM1.POLLS.FieldByName('ALT_PHONE').AsString > ''))) then
+          begin
+            DM1.ActiviteLog.Filter := 'CActiveID = ' + DM1.POLLS.FieldByName('ID').AsString;
+           // DM1.ActiviteLog.Filter := '((CActiveID = ''' + DM1.POLLS.FieldByName('ID').AsString + ''') AND ((ENTRY LIKE ''' + DM1.POLLS.FieldByName('TELEPHONE').AsString + '%'' ) OR ' +
+           //                           '(ENTRY LIKE ''' + DM1.POLLS.FieldByName('ALT_PHONE').AsString + '%'' )))';
+           //ShowMessage(DM1.ActiviteLog.Filter);
+          end
+        else DM1.ActiviteLog.Filter := 'CActiveID = -999';
         DM1.ActiviteLog.Open;
     end
   else DM1.ActiviteLog.Close;
@@ -297,6 +359,7 @@ begin
   DM1.POLLS.Parameters[0].Value := '';
   DM1.POLLS.Parameters[1].Value := cb_POLLS.Text;
   DM1.POLLS.Parameters[2].Value := 'X';
+  DM1.POLLS.Parameters[3].Value := 'X';
   DM1.POLLS.Open;
   TABSChange(Nil);
 end;
@@ -318,6 +381,7 @@ begin
   DM1.POLLS.Parameters[0].Value := '';
   DM1.POLLS.Parameters[1].Value := '';
   DM1.POLLS.Parameters[2].Value := cb_PHONE.Text;
+  DM1.POLLS.Parameters[3].Value := cb_PHONE.Text;
   DM1.POLLS.Open;
   TABSChange(Nil);
 end;
@@ -426,6 +490,7 @@ begin
 end;
 
 procedure TMAIN_FORM.bnt_UNLOCKClick(Sender: TObject);
+var PID, POLL : String;
 begin
   if (not DM1.POLLS.Active) or (DM1.POLLS.RecordCount < 1) then
     begin
@@ -434,18 +499,18 @@ begin
     end;
 
   Beep;
-  if MessageDlg('* * * ARE YOU SURE YOU WANT TO * * *' + #10#13#10#13 + 'RE-START TALLY for Poll Location ' + DM1.POLLS.FieldByname('POLL').AsString + '?', mtConfirmation , [mbYes, mbCancel], 0) = mrYes then
+  PID := DM1.POLLS.FieldByname('PID').AsString;
+  POLL:= DM1.POLLS.FieldByname('POLL').AsString;
+  if MessageDlg('* * * ARE YOU SURE YOU WANT TO * * *' + #10#13#10#13 + 'RE-START TALLY for Poll Location ' + POLL + '?', mtConfirmation , [mbYes, mbCancel], 0) = mrYes then
     begin
       Beep;
-      if MessageDlg('* * * THIS PROCESS "CAN NOT" BE UNDONE * * *' + #10#13#10#13 + 'RE-START TALLY for Poll Location ' + DM1.POLLS.FieldByname('POLL').AsString + '?', mtWarning, [mbYes, mbCancel], 0) = mrYes then
+      if MessageDlg('* * * THIS PROCESS "CAN NOT" BE UNDONE * * *' + #10#13#10#13 + 'RE-START TALLY for Poll Location ' + POLL + '?', mtWarning, [mbYes, mbCancel], 0) = mrYes then
         begin
-          DM1.ADOCommand.CommandText := 'DELETE CActive WHERE polloc = ' + QuotedStr(DM1.POLLS.FieldByname('POLL').AsString);
+          DM1.ADOCommand.CommandText := 'DELETE CActive WHERE polloc = ' + QuotedStr(PID);
           DM1.ADOCommand.Execute;
 
-          DM1.ADOCommand.CommandText :=  'INSERT INTO dbo.CActiveLog (entry) VALUES (' + QuotedStr(DM1.POLLS.FieldByname('TELEPHONE').AsString + ' *System "RE-STARTED" Tally') + ')';
+          DM1.ADOCommand.CommandText :=  'INSERT INTO dbo.CActiveLog (entry) VALUES (''' + '*System "RE-STARTED" Tally for (' + POLL + ')'')';
           DM1.ADOCommand.Execute;
-
-          POLLSRowChanged(Nil);
         end
       else
         begin
@@ -455,6 +520,22 @@ begin
     end
   else MessageDlg('Process canceled', mtConfirmation, [mbOk], 0);
 
+end;
+
+procedure TMAIN_FORM.btnREFRESHClick(Sender: TObject);
+begin
+   DM1.UTIL.Close;
+   DM1.UTIL.SQL.Text := 'SELECT TOP 1 TALLY_CLOSED_MSG, CAST(TALLY_OPEN AS INT) AS TALLY_OPEN, CAST(PROCESSING AS INT) AS PROCESSING FROM Config';
+   DM1.UTIL.Open;
+        CK_PROCESSING.Checked := (DM1.UTIL.FieldByName('PROCESSING').AsInteger = 1);
+        CK_TALLY_OPEN.Checked := (DM1.UTIL.FieldByName('TALLY_OPEN').AsInteger = 1);
+        smsMSG.Lines.Text     :=  DM1.UTIL.FieldByName('TALLY_CLOSED_MSG').AsString;
+   DM1.UTIL.Close;
+end;
+
+procedure TMAIN_FORM.btnSAVEClick(Sender: TObject);
+begin
+  BEEP();
 end;
 
 end.

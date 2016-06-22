@@ -39,7 +39,7 @@ MaxStackSize=1048576
 ImageBase=4194304
 ExeDescription=
 [Directories]
-OutputDir=M:\TT_DEV\svn\trunk\SMSTally\APP
+OutputDir=M:\TT_DEV\bin
 UnitOutputDir=
 PackageDLLOutputDir=
 PackageDCPOutputDir=
@@ -57,7 +57,7 @@ AutoIncBuild=0
 MajorVer=1
 MinorVer=1
 Release=3
-Build=18
+Build=20
 Debug=0
 PreRelease=0
 Special=0
@@ -66,10 +66,10 @@ DLL=0
 Locale=1033
 CodePage=1252
 [Version Info Keys]
-CompanyName=
-FileDescription=
-FileVersion=1.1.3.18
-InternalName=
+CompanyName=EMCS LLC
+FileDescription=Tally Management
+FileVersion=1.1.3.20
+InternalName=SMSTally
 LegalCopyright=
 LegalTrademarks=
 OriginalFilename=
@@ -82,6 +82,6 @@ Count=1
 Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
 [HistoryLists\hlOutputDirectorry]
 Count=3
-Item0=M:\TT_DEV\svn\trunk\SMSTally\APP
-Item1=M:\TT_DEV\bin
+Item0=M:\TT_DEV\bin
+Item1=M:\TT_DEV\svn\trunk\SMSTally\APP
 Item2=C:\TT_DEV\bin

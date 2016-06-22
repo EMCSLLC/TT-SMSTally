@@ -5,9 +5,9 @@ object DataModule1: TDataModule1
   Height = 467
   Width = 615
   object ADOConnection: TADOConnection
-    ConnectionString = 'FILE NAME=SMSTally.UDL'
+    ConnectionString = 'FILE NAME=TALLY.UDL'
     LoginPrompt = False
-    Provider = 'SMSTally.UDL'
+    Provider = 'TALLY.UDL'
     Left = 56
     Top = 32
   end
@@ -39,7 +39,7 @@ object DataModule1: TDataModule1
         NumericScale = 255
         Precision = 255
         Size = 60
-        Value = Null
+        Value = '0'
       end
       item
         Name = 'POLL'
@@ -57,19 +57,30 @@ object DataModule1: TDataModule1
         NumericScale = 255
         Precision = 255
         Size = 15
-        Value = Null
+        Value = 'X'
+      end
+      item
+        Name = 'PHONE2'
+        Attributes = [paNullable]
+        DataType = ftString
+        NumericScale = 255
+        Precision = 255
+        Size = 15
+        Value = 'X'
       end>
     SQL.Strings = (
       
-        ' SELECT DISTINCT P.POLL, U.PHONE1 AS TELEPHONE, U.PWD AS [PASSWO' +
-        'RD], P.ELECTORATE, CA.DONE, CA.SAV,CA.POLLOC'
+        ' SELECT DISTINCT P.POLL, U.PHONE1 AS TELEPHONE, U.PHONE2 AS ALT_' +
+        'PHONE, U.PWD AS [PASSWORD], P.ELECTORATE, CA.ID, CA.DONE, CA.SAV' +
+        ',CA.POLLOC,P.PID'
       '   FROM CONTESTS C'
       '   LEFT JOIN POLLS P ON P.PID = C.PID'
-      '   LEFT JOIN CACTIVE CA ON CA.POLLOC = P.POLL'
+      '   LEFT JOIN CACTIVE CA ON CA.POLLOC = P.PID'
       '   LEFT JOIN USERS U ON U.PID = P.PID'
       '  WHERE C.CONTEST = :DISTRICT'
       'OR U.POLL =:POLL'
-      'OR U.PHONE1 =:PHONE')
+      'OR U.PHONE1 =:PHONE'
+      'OR U.PHONE2 =:PHONE2')
     Left = 240
     Top = 112
   end
@@ -113,8 +124,8 @@ object DataModule1: TDataModule1
     Parameters = <>
     SQL.Strings = (
       
-        'SELECT ID, LOGDT, CAST(ENTRY AS VARCHAR(1000) ) AS ENTRY FROM CA' +
-        'ctiveLog ORDER BY ID DESC')
+        'SELECT DISTINCT ID, LOGDT, CAST(ENTRY AS VARCHAR(1000) ) AS ENTR' +
+        'Y, CActiveID FROM CActiveLog ORDER BY ID DESC')
     Left = 352
     Top = 112
     object ActiviteLogLOGDT: TDateTimeField
@@ -137,6 +148,11 @@ object DataModule1: TDataModule1
       ReadOnly = True
       Visible = False
     end
+    object ActiviteLogCActiveID: TIntegerField
+      DisplayWidth = 10
+      FieldName = 'CActiveID'
+      Visible = False
+    end
   end
   object LOG_DS: TDataSource
     AutoEdit = False
@@ -155,5 +171,68 @@ object DataModule1: TDataModule1
     Parameters = <>
     Left = 48
     Top = 280
+  end
+  object IsRunning: TADOQuery
+    Connection = ADOConnection
+    Parameters = <>
+    SQL.Strings = (
+      'SELECT  TOP 1 '
+      '        job.name,'
+      '        1 AS Running,'
+      '        job.job_id,'
+      '        job.originating_server,'
+      '        activity.run_requested_date,'
+      
+        '        DATEDIFF(MINUTE, activity.run_requested_date, GETDATE())' +
+        ' as Elapsed,'
+      '        case when activity.last_executed_step_id is null'
+      '             then '#39'Step 1 executing'#39
+      
+        '             else '#39'Step '#39' + convert(varchar(20), last_executed_s' +
+        'tep_id + 1)'
+      '                  + '#39' executing'#39
+      '        end'
+      'FROM    msdb.dbo.sysjobs_view job'
+      
+        '        JOIN msdb.dbo.sysjobactivity activity ON job.job_id = ac' +
+        'tivity.job_id'
+      
+        '        JOIN msdb.dbo.syssessions sess ON sess.session_id = acti' +
+        'vity.session_id'
+      
+        '        JOIN ( SELECT   MAX(agent_start_date) AS max_agent_start' +
+        '_date'
+      '               FROM     msdb.dbo.syssessions'
+      
+        '             ) sess_max ON sess.agent_start_date = sess_max.max_' +
+        'agent_start_date'
+      'WHERE   run_requested_date IS NOT NULL'
+      '        AND stop_execution_date IS NULL'
+      '        AND job.name like N'#39'Run SMSTallY%'#39'  ')
+    Left = 272
+    Top = 264
+  end
+  object AppCaption: TADOQuery
+    Connection = ADOConnection
+    Parameters = <>
+    SQL.Strings = (
+      
+        'SELECT '#39' EBC Tally Management - '#39' + UPPER(CAST(GETDATE() AS VARC' +
+        'HAR(25)))'
+      
+        '+ '#39'    POLLS:  '#39' + CAST((SELECT COUNT(DISTINCT PID) FROM dbo.Use' +
+        'rs) AS VARCHAR) +'
+      
+        '+ '#39'      NOT STARTED:  '#39' + CAST((SELECT COUNT(DISTINCT PID) FROM' +
+        ' dbo.Users WHERE PID NOT IN (SELECT polloc FROM CActive))AS VARC' +
+        'HAR) '
+      
+        '+ '#39'     IN PROGRESS:  '#39' + CAST((SELECT COUNT(*) FROM dbo.CActive' +
+        ' WHERE SAV <> 2) AS VARCHAR) +'
+      
+        '+ '#39'     COMPLETED:  '#39' + CAST((SELECT COUNT(*) FROM dbo.CActive W' +
+        'HERE SAV =  2) AS VARCHAR) AS Caption')
+    Left = 160
+    Top = 264
   end
 end
