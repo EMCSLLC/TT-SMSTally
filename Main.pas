@@ -68,6 +68,10 @@ type
     smsMSG: TMemo;
     nothing: TImage;
     SB: TPanel;
+    btnXFER: TRzBitBtn;
+    btnSTART: TRzBitBtn;
+    bntSTOP: TRzBitBtn;
+    cbAUTO_UPDATE: TRzCheckBox;
     procedure FormCreate(Sender: TObject);
     procedure btnCLOSEClick(Sender: TObject);
     procedure cb_DistrictChange(Sender: TObject);
@@ -81,6 +85,10 @@ type
     procedure bnt_UNLOCKClick(Sender: TObject);
     procedure btnREFRESHClick(Sender: TObject);
     procedure btnSAVEClick(Sender: TObject);
+    procedure btnXFERClick(Sender: TObject);
+    procedure btnSTARTClick(Sender: TObject);
+    procedure bntSTOPClick(Sender: TObject);
+    procedure cbAUTO_UPDATEClick(Sender: TObject);
   private
     { Private declarations }
   public
@@ -101,7 +109,27 @@ var
   ct : integer;
 begin
   SB.Caption := ' VERSION: ' + DM1.VersionNumber;
+
+  if ParamCount < 1 then
+     begin
+       ShowMessage('YOU DO NOT HAVE PERMISSION TO ACCESS THIS APPLICATION!');
+       Halt;
+     end
+  else
+     begin
+       if (POS('P', paramstr(1)) < 1) then
+         begin
+           ShowMessage('YOU DO NOT HAVE PERMISSION TO ACCESS THIS APPLICATION!');
+           Halt;
+         end;
+           
+       TabCONFIG.TabVisible := POS('S', paramstr(1)) > 0;
+       TabLog.TabVisible := POS('L', paramstr(1)) > 0;
+     end;
+
+
   DM1.ADOConnection.Connected := True;
+  DM1.ADOIntegrity.Connected := True;
 
   for ct := 1 to 7 do
     begin
@@ -233,6 +261,8 @@ var
   Running  : Integer;
 begin
 
+   DM1.iAUTO_UPDATE := cbAUTO_UPDATE.Checked;
+
    if not CK_PROCESSING.Checked then
      begin
         SB.Color := clRed;
@@ -255,6 +285,15 @@ begin
          end;
      end;
 
+  if ((SB.Color = clRed) and  (CK_PROCESSING.Font.Color = clBlack)) then
+    CK_PROCESSING.Font.Color := clRed
+  else CK_PROCESSING.Font.Color := clBlack;
+
+  if ((SB.Color = clYellow) and  (CK_TALLY_OPEN.Font.Color = clBlack)) then
+    CK_TALLY_OPEN.Font.Color := clRed
+  else CK_TALLY_OPEN.Font.Color := clBlack;
+
+
   TRY
   DM1.AppCaption.Close;
   DM1.AppCaption.Open;
@@ -274,19 +313,25 @@ begin
       SB.Color := clRed;
       SB.Font.Color := clYellow;
       SB.Caption := ' VERSION: ' + DM1.VersionNumber + '  -  * * * SMS NOT PROCESSING MESSAGES * * *!';
-    end;
+      if btnSTART.Color = clLime then btnSTART.Color := clWhite else btnSTART.Color := clLime;
+      if TabCONFIG.TabVisible then TABS.ActivePage := TabCONFIG;
+    end
+  else btnSTART.Color := clWhite;
 
   if DM1.POLLS.Active then
     begin
       savePoll := DM1.POLLS.GetBookmark;
       LockWindowUpdate(Application.MainForm.Handle);
       DM1.POLLS.Requery;
-      if DM1.POLLS.RecordCount > 0 then
-        DM1.POLLS.GotoBookmark(SavePoll);
-      if DM1.CActive.Active then DM1.CActive.Requery;
-
-      Process.visible := (DM1.CActive.FieldByname('polloc').AsString > '');
-      Locked.Visible := DM1.CActive.Active and (DM1.CActive.FieldByname('SAV').AsInteger = 2);
+      if DM1.POLLS.RecordCount > 0 then DM1.POLLS.GotoBookmark(SavePoll);
+      Process.visible := False;
+      Locked.Visible := False;
+      if DM1.CActive.Active then
+        begin
+          DM1.CActive.Requery;
+          Process.visible := (DM1.CActive.FieldByname('polloc').AsString > '');
+          Locked.Visible := DM1.CActive.Active and (DM1.CActive.FieldByname('SAV').AsInteger = 2);
+        end;
       Nothing.Visible := ((not Locked.Visible) and (not Process.visible));
 
       bnt_UNLOCK.Enabled := Locked.Visible;
@@ -327,8 +372,10 @@ end;
 
 procedure TMAIN_FORM.TABSChange(Sender: TObject);
 begin
+
   if (TABS.ActivePage = TabLog) then
     begin
+        Timer1.Enabled := False;
         DM1.ActiviteLog.Close;
         if (DM1.POLLS.Active AND (DM1.POLLS.FieldByName('ID').AsString > '')
           AND ((DM1.POLLS.FieldByName('TELEPHONE').AsString > '') OR (DM1.POLLS.FieldByName('ALT_PHONE').AsString > ''))) then
@@ -342,6 +389,16 @@ begin
         DM1.ActiviteLog.Open;
     end
   else DM1.ActiviteLog.Close;
+
+
+  if (TABS.ActivePage = TabCONFIG) then
+    begin
+      Timer1.Enabled := False;
+    end;
+
+
+  if (TABS.ActivePage = TabPoll)  THEN  Timer1.Enabled := True;
+
 end;
 
 procedure TMAIN_FORM.cb_POLLSChange(Sender: TObject);
@@ -424,23 +481,6 @@ begin
                  MessageDlg('(' + InputString + ') is not a valid telephone number', mtError, [mbCancel], 0);
                  Exit;
                end;
-
-             with DM1.UTIL do
-               begin
-                 Close;
-                 SQL.Text := 'SELECT PHONE1, POLL FROM Users WHERE PHONE1 = ' + QuotedStr(InputString);
-                 Open;
-                 if FieldByName('PHONE1').AsString > ''  then
-                   begin
-                     Beep;
-                     MessageDlg('This telephone number (' + InputString + ')' + #10#13#10#13 +
-                                'is already being used by' + #10#13#10#13 +
-                                'another poll location [' + TRIM(FieldByName('POLL').AsString) + ']!', mtError, [mbCancel], 0);
-                     Close;
-                     Exit;
-                   end;
-                 Close;
-                end;
 
              if MessageDlg('* * * ARE YOU SURE YOU WANT TO * * *' + #10#13#10#13 +
                            'Replace ' + DM1.POLLS.FieldByname('TELEPHONE').AsString +
@@ -534,8 +574,57 @@ begin
 end;
 
 procedure TMAIN_FORM.btnSAVEClick(Sender: TObject);
+var
+  TallyOpen, Processing, SMSMessage : String;
 begin
-  BEEP();
+  if MessageDlg('* * * ARE YOU SURE YOU WANT TO * * *' + #10#13#10#13 + 'UPDATE TALLY Setting ?', mtConfirmation , [mbYes, mbCancel], 0) <> mrYes then exit;
+
+  if CK_TALLY_OPEN.Checked then TallyOpen := '1' else TallyOpen := '0';
+  if CK_PROCESSING.Checked then Processing := '1' else Processing := '0';
+  SMSMessage := QuotedStr(smsMSG.Lines.Text);
+  DM1.ADOCommand.CommandText := 'UPDATE Config SET PROCESSING = ' +  Processing +
+                                ' , TALLY_OPEN = ' + TallyOpen +
+                                ' , TALLY_CLOSED_MSG = ' + SMSMessage;
+  TRY
+    DM1.ADOCommand.Execute;
+  EXCEPT
+  END;
+  Timer1Timer(nil);
+end;
+
+procedure TMAIN_FORM.btnXFERClick(Sender: TObject);
+begin
+  DM1.iAUTO_UPDATE := True;
+  DM1.Timer1Timer(Sender);
+  DM1.iAUTO_UPDATE := cbAUTO_UPDATE.Checked;
+  Timer1Timer(nil);
+end;
+
+procedure TMAIN_FORM.btnSTARTClick(Sender: TObject);
+begin
+  if MessageDlg('* * * ARE YOU SURE YOU WANT TO * * *' + #10#13#10#13 + '"START" SMS TALLY SQL Agent job?', mtConfirmation , [mbYes, mbCancel], 0) <> mrYes then exit;
+  DM1.ADOCommand.CommandText := 'msdb.dbo.sp_start_job ''Run SMSTally''';
+  TRY
+    DM1.ADOCommand.Execute;
+  EXCEPT
+  END;
+  Timer1Timer(nil);
+end;
+
+procedure TMAIN_FORM.bntSTOPClick(Sender: TObject);
+begin
+  if MessageDlg('* * * ARE YOU SURE YOU WANT TO * * *' + #10#13#10#13 + '"STOP" SMS TALLY SQL Agent job?', mtConfirmation , [mbYes, mbCancel], 0) <> mrYes then exit;
+  DM1.ADOCommand.CommandText := 'msdb.dbo.sp_stop_job ''Run SMSTally''';
+  TRY
+    DM1.ADOCommand.Execute;
+  EXCEPT
+  END;
+  Timer1Timer(nil);
+end;
+
+procedure TMAIN_FORM.cbAUTO_UPDATEClick(Sender: TObject);
+begin
+  DM1.iAUTO_UPDATE := cbAUTO_UPDATE.Checked;
 end;
 
 end.

@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
-  Db, ADODB;
+  Db, ADODB, ExtCtrls;
 
 type
   TDataModule1 = class(TDataModule)
@@ -25,11 +25,18 @@ type
     ActiviteLogCActiveID: TIntegerField;
     IsRunning: TADOQuery;
     AppCaption: TADOQuery;
+    ADOIntegrity: TADOConnection;
+    CMDIntegrity: TADOCommand;
+    Timer1: TTimer;
+    SMS_TALLY: TADODataSet;
     Function VersionNumber : String;
+    procedure Timer1Timer(Sender: TObject);
+    procedure DataModuleCreate(Sender: TObject);
   private
     { Private declarations }
   public
     { Public declarations }
+    iAUTO_UPDATE : Boolean;
   end;
 
 var
@@ -79,6 +86,81 @@ Function TDataModule1.VersionNumber : String;
     end;
 begin
   VersionNumber :=  GetBuildInfoAsString;
+end;
+
+procedure TDataModule1.Timer1Timer(Sender: TObject);
+var
+  r,c: Integer;
+  val,
+  cmd: String;
+  OK : Boolean;
+begin
+  if not iAUTO_UPDATE then exit;
+
+  TRY
+    SMS_TALLY.Close;
+    SMS_TALLY.Open;
+    OK := SMS_TALLY.Active;
+  EXCEPT
+    OK := False;
+  END;
+
+  if OK then
+    begin
+      CMDIntegrity.CommandText := 'TRUNCATE TABLE TALLY_RESULTS';
+      TRY
+        CMDIntegrity.Execute;
+      EXCEPT
+        OK := False;
+      END;
+    end;
+
+
+  if OK then
+    begin
+      while not SMS_Tally.eof do
+        begin
+          if not OK then Break;
+          TRY
+          cmd :=' INSERT INTO TALLY_RESULTS ([EID],[PID],[CID],[CONTEST],[CANDIDATE],[CSORT],[BALLOTS_CAST],[FROM_PHONE],[DT_POSTED]) ' +
+                ' VALUES (~EID,~PID,~CID,~CONTEST,~CANDIDATE,~CSORT,~BALLOTS_CAST,~FROM_PHONE,~DT_POSTED)';
+          for c := 0 to SMS_TALLY.FieldCount - 1 do
+            begin
+              if SMS_TALLY.FieldByName(SMS_TALLY.Fields[c].FieldName).IsNull then val := 'NULL' else
+                val := QuotedStr(SMS_TALLY.FieldByName(SMS_TALLY.Fields[c].FieldName).AsString);
+              CMD := StringReplace(CMD,'~' + SMS_TALLY.Fields[c].FieldName , val ,[rfIgnoreCase]);
+            end;
+          EXCEPT
+            OK := False;
+          END;
+
+          if OK then
+            begin
+              CMDIntegrity.CommandText := cmd;
+              TRY
+                CMDIntegrity.Execute;
+              EXCEPT
+                OK := False;
+              END;
+            end;
+          SMS_TALLY.Next;
+        end;
+        if OK then
+          begin
+            cmd := 'EXEC dbo.pr_UpdateFromTallyResults';
+              TRY
+                CMDIntegrity.Execute;
+              EXCEPT
+                OK := False;
+              END;
+          end;
+      end;
+
+end;
+
+procedure TDataModule1.DataModuleCreate(Sender: TObject);
+begin
+  iAUTO_UPDATE := False;
 end;
 
 end.

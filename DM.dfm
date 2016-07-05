@@ -1,5 +1,6 @@
 object DataModule1: TDataModule1
   OldCreateOrder = False
+  OnCreate = DataModuleCreate
   Left = 296
   Top = 107
   Height = 467
@@ -208,7 +209,7 @@ object DataModule1: TDataModule1
         'agent_start_date'
       'WHERE   run_requested_date IS NOT NULL'
       '        AND stop_execution_date IS NULL'
-      '        AND job.name like N'#39'Run SMSTallY%'#39'  ')
+      '        AND job.name like N'#39'Run SMSTally%'#39'  ')
     Left = 272
     Top = 264
   end
@@ -216,23 +217,49 @@ object DataModule1: TDataModule1
     Connection = ADOConnection
     Parameters = <>
     SQL.Strings = (
-      
-        'SELECT '#39' EBC Tally Management - '#39' + UPPER(CAST(GETDATE() AS VARC' +
-        'HAR(25)))'
+      'SELECT '#39' EBC Tally Management - '#39' + '
       
         '+ '#39'    POLLS:  '#39' + CAST((SELECT COUNT(DISTINCT PID) FROM dbo.Use' +
         'rs) AS VARCHAR) +'
       
-        '+ '#39'      NOT STARTED:  '#39' + CAST((SELECT COUNT(DISTINCT PID) FROM' +
+        '+ '#39'      NO ACTIVITY:  '#39' + CAST((SELECT COUNT(DISTINCT PID) FROM' +
         ' dbo.Users WHERE PID NOT IN (SELECT polloc FROM CActive))AS VARC' +
         'HAR) '
       
-        '+ '#39'     IN PROGRESS:  '#39' + CAST((SELECT COUNT(*) FROM dbo.CActive' +
-        ' WHERE SAV <> 2) AS VARCHAR) +'
+        '+ '#39'     TALLY MODE:  '#39' + CAST((SELECT COUNT(*) FROM dbo.CActive ' +
+        'WHERE SAV <> 2) AS VARCHAR) +'
       
-        '+ '#39'     COMPLETED:  '#39' + CAST((SELECT COUNT(*) FROM dbo.CActive W' +
-        'HERE SAV =  2) AS VARCHAR) AS Caption')
+        '+ '#39'     LOCKED:  '#39' + CAST((SELECT COUNT(*) FROM dbo.CActive WHER' +
+        'E SAV =  2) AS VARCHAR) AS Caption')
     Left = 160
     Top = 264
+  end
+  object ADOIntegrity: TADOConnection
+    ConnectionString = 'FILE NAME=INTEGRITY.UDL'
+    LoginPrompt = False
+    Provider = 'INTEGRITY.UDL'
+    Left = 168
+    Top = 32
+  end
+  object CMDIntegrity: TADOCommand
+    Connection = ADOIntegrity
+    Parameters = <>
+    Left = 304
+    Top = 48
+  end
+  object Timer1: TTimer
+    Interval = 520000
+    OnTimer = Timer1Timer
+    Left = 264
+    Top = 32
+  end
+  object SMS_TALLY: TADODataSet
+    Connection = ADOConnection
+    CommandText = 
+      'SELECT * FROM vw_TALLY_RESULTS WITH (NOLOCK) ORDER BY PID,CID,CS' +
+      'ORT'
+    Parameters = <>
+    Left = 264
+    Top = 184
   end
 end
