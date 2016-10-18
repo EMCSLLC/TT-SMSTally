@@ -57,7 +57,7 @@ AutoIncBuild=0
 MajorVer=1
 MinorVer=1
 Release=8
-Build=26
+Build=29
 Debug=0
 PreRelease=0
 Special=0
@@ -68,7 +68,7 @@ CodePage=1252
 [Version Info Keys]
 CompanyName=EMCS LLC
 FileDescription=Tally Management
-FileVersion=1.1.8.26
+FileVersion=1.1.8.29
 InternalName=SMSTally
 LegalCopyright=
 LegalTrademarks=

@@ -6,7 +6,7 @@ uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
   StdCtrls, RzCmboBx, RzLabel, RzButton, ExtCtrls, Grids, Wwdbigrd,
   Wwdbgrid, RzPanel, RzRadGrp, DBCtrls, DB, ComCtrls, RzDBLbl, RzRadChk,
-  GraphicEx, Placemnt;
+  GraphicEx, Placemnt, PBShareMap;
 
 type
   TMAIN_FORM = class(TForm)
@@ -72,6 +72,12 @@ type
     btnSTART: TRzBitBtn;
     bntSTOP: TRzBitBtn;
     cbAUTO_UPDATE: TRzCheckBox;
+    IntegrityShare: TPBShareMap;
+    NAME8: TDBText;
+    VOTE8: TDBText;
+    NAME9: TDBText;
+    VOTE9: TDBText;
+
     procedure FormCreate(Sender: TObject);
     procedure btnCLOSEClick(Sender: TObject);
     procedure cb_DistrictChange(Sender: TObject);
@@ -89,6 +95,8 @@ type
     procedure btnSTARTClick(Sender: TObject);
     procedure bntSTOPClick(Sender: TObject);
     procedure cbAUTO_UPDATEClick(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
   private
     { Private declarations }
   public
@@ -107,6 +115,29 @@ uses DM;
 procedure TMAIN_FORM.FormCreate(Sender: TObject);
 var
   ct : integer;
+  iHandle : THandle;
+  NetCOMPUTER : String;
+  Ok_To_Run : Boolean;
+
+    procedure NetworkComputer;
+    var
+      nComputer : pChar;
+      nSize     : DWord;
+    begin
+      nSize:=30;
+      nComputer:=StrAlloc(nSize);
+      TRY
+        TRY
+          GetComputerName(nComputer,nSize);
+          netComputer := nComputer;
+        EXCEPT
+          netComputer := 'UNKNOWN';
+        END;
+      FINALLY
+        StrDispose(nComputer);
+      END;
+    end;
+
 begin
   SB.Caption := ' VERSION: ' + DM1.VersionNumber;
 
@@ -122,16 +153,32 @@ begin
            ShowMessage('YOU DO NOT HAVE PERMISSION TO ACCESS THIS APPLICATION!');
            Halt;
          end;
-           
+
        TabCONFIG.TabVisible := POS('S', paramstr(1)) > 0;
        TabLog.TabVisible := POS('L', paramstr(1)) > 0;
      end;
 
+      with IntegrityShare do
+        begin
+          MapName := uppercase('SMS_TALLY-' + netComputer);
+          MaxSize := 255;
+          OpenMap;
+          Ok_To_Run := not ExistsAlready;
+          if not Ok_To_Run then
+            begin
+              if trim(MapStrings.Text) > '' then
+                begin
+                  iHandle := StrToInt(MapStrings.Text);
+                  if iHandle > 0 then SetForeGroundWindow(iHandle);
+                end;
+              Application.Terminate;
+            end;
+        end;
 
   DM1.ADOConnection.Connected := True;
   DM1.ADOIntegrity.Connected := True;
 
-  for ct := 1 to 7 do
+  for ct := 1 to 9 do
     begin
       DM1.UTIL.Close;
       DM1.UTIL.SQL.Text := 'SELECT column_id FROM sys.columns WHERE Name = ' + QuotedStr('name' + IntToStr(ct)) +'  AND Object_ID = Object_ID(' + QuotedStr('CActive') +')';
@@ -166,6 +213,14 @@ begin
              7 : begin
                    NAME7.Enabled := True; NAME7.DataSource := DM1.CActive_DS; NAME7.Visible := True;
                    VOTE7.Enabled := True; VOTE7.DataSource := DM1.CActive_DS; VOTE7.Visible := True;
+                 end;
+             8 : begin
+                   NAME8.Enabled := True; NAME8.DataSource := DM1.CActive_DS; NAME8.Visible := True;
+                   VOTE8.Enabled := True; VOTE8.DataSource := DM1.CActive_DS; VOTE8.Visible := True;
+                 end;
+             9 : begin
+                   NAME9.Enabled := True; NAME9.DataSource := DM1.CActive_DS; NAME9.Visible := True;
+                   VOTE9.Enabled := True; VOTE9.DataSource := DM1.CActive_DS; VOTE9.Visible := True;
                  end;
            end; {case}
          end;
@@ -487,40 +542,32 @@ begin
                            ' with ' + InputString + #10#13#10#13 +
                            'POLL LOCATION:' + DM1.POLLS.FieldByname('POLL').AsString + '?', mtConfirmation, [mbYes, mbCancel], 0) = mrYes then
                begin
+                 DM1.ADOCommand.CommandText := 'DELETE CActive WHERE polloc = ' + QuotedStr(DM1.POLLS.FieldByname('POLL').AsString);
+                 DM1.ADOCommand.Execute;
 
-                 if MessageDlg('* * * THIS PROCESS "CAN NOT" BE UNDONE * * *'  + #10#13#10#13 +
-                               'Replace ' + DM1.POLLS.FieldByname('TELEPHONE').AsString +
-                               ' with ' + InputString + #10#13#10#13 +
-                               'POLL LOCATION:' + DM1.POLLS.FieldByname('POLL').AsString + '?', mtWarning, [mbYes, mbCancel], 0) = mrYes then
-                     begin
-                       DM1.ADOCommand.CommandText := 'DELETE CActive WHERE polloc = ' + QuotedStr(DM1.POLLS.FieldByname('POLL').AsString);
-                       DM1.ADOCommand.Execute;
+                 DM1.ADOCommand.CommandText := 'UPDATE Users SET PHONE1 = ' + QuotedStr(InputString) + ', ' +
+                                               ' PHONE2 = ' + QuotedStr(DM1.POLLS.FieldByname('TELEPHONE').AsString) +
+                                               ' WHERE POLL = ' + QuotedStr(DM1.POLLS.FieldByname('POLL').AsString);
+                 DM1.ADOCommand.Execute;
 
-                       DM1.ADOCommand.CommandText := 'UPDATE Users SET PHONE1 = ' + QuotedStr(InputString) + ', ' +
-                                                     ' PHONE2 = ' + QuotedStr(DM1.POLLS.FieldByname('TELEPHONE').AsString) +
-                                                     ' WHERE POLL = ' + QuotedStr(DM1.POLLS.FieldByname('POLL').AsString);
-                       DM1.ADOCommand.Execute;
+                 DM1.ADOCommand.CommandText :=  'INSERT INTO dbo.CActiveLog (entry) VALUES (' + QuotedStr(InputString + ' *System changed telephone number from ' + DM1.POLLS.FieldByname('TELEPHONE').AsString) +  ')';
+                 DM1.ADOCommand.Execute;
 
-                       DM1.ADOCommand.CommandText :=  'INSERT INTO dbo.CActiveLog (entry) VALUES (' + QuotedStr(InputString + ' *System changed telephone number from ' + DM1.POLLS.FieldByname('TELEPHONE').AsString) +  ')';
-                       DM1.ADOCommand.Execute;
-
-                       cb_PHONE.Items.Clear;
-                       DM1.UTIL.Close;
-                       DM1.UTIL.SQL.Text := 'SELECT PHONE1 FROM Users WHERE RTRIM(PHONE1) > '''' ORDER BY PHONE1';
-                       with DM1.UTIL do
-                         begin
-                           Open;
-                           while not DM1.UTIL.eof do
-                             begin
-                               cb_PHONE.Items.Add(DM1.UTIL.FieldByName('PHONE1').AsString);
-                               DM1.UTIL.Next;
-                             end;
-                           Close;
-                         end;
-                         cb_POLLS.Text := '';
-                         cb_PHONE.Text := InputString;
-                     end
-                   else MessageDlg('Process canceled!', mtConfirmation, [mbOk], 0);
+                 cb_PHONE.Items.Clear;
+                 DM1.UTIL.Close;
+                 DM1.UTIL.SQL.Text := 'SELECT PHONE1 FROM Users WHERE RTRIM(PHONE1) > '''' ORDER BY PHONE1';
+                 with DM1.UTIL do
+                   begin
+                     Open;
+                     while not DM1.UTIL.eof do
+                       begin
+                         cb_PHONE.Items.Add(DM1.UTIL.FieldByName('PHONE1').AsString);
+                         DM1.UTIL.Next;
+                       end;
+                     Close;
+                   end;
+                   cb_POLLS.Text := '';
+                   cb_PHONE.Text := InputString;
                end
              else MessageDlg('Process canceled!', mtConfirmation, [mbOk], 0);
           end
@@ -625,6 +672,21 @@ end;
 procedure TMAIN_FORM.cbAUTO_UPDATEClick(Sender: TObject);
 begin
   DM1.iAUTO_UPDATE := cbAUTO_UPDATE.Checked;
+end;
+
+procedure TMAIN_FORM.FormDestroy(Sender: TObject);
+begin
+  TRY
+    IntegrityShare.CloseMap;
+    Sleep(100);
+  EXCEPT
+  END;
+
+end;
+
+procedure TMAIN_FORM.FormActivate(Sender: TObject);
+begin
+  IntegrityShare.MapStrings.Text := IntToStr(Application.MainForm.Handle);
 end;
 
 end.

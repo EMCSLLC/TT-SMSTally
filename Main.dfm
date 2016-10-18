@@ -16,7 +16,9 @@ object MAIN_FORM: TMAIN_FORM
   Font.Style = []
   OldCreateOrder = False
   Position = poDesktopCenter
+  OnActivate = FormActivate
   OnCreate = FormCreate
+  OnDestroy = FormDestroy
   PixelsPerInch = 96
   TextHeight = 13
   object pnl_POLLS: TPanel
@@ -427,7 +429,7 @@ object MAIN_FORM: TMAIN_FORM
         end
         object NAME2: TDBText
           Left = 9
-          Top = 205
+          Top = 204
           Width = 61
           Height = 20
           AutoSize = True
@@ -443,7 +445,7 @@ object MAIN_FORM: TMAIN_FORM
         end
         object NAME3: TDBText
           Left = 9
-          Top = 237
+          Top = 234
           Width = 61
           Height = 20
           AutoSize = True
@@ -459,7 +461,7 @@ object MAIN_FORM: TMAIN_FORM
         end
         object NAME4: TDBText
           Left = 9
-          Top = 269
+          Top = 265
           Width = 61
           Height = 20
           AutoSize = True
@@ -474,7 +476,7 @@ object MAIN_FORM: TMAIN_FORM
         end
         object NAME5: TDBText
           Left = 9
-          Top = 301
+          Top = 296
           Width = 61
           Height = 20
           AutoSize = True
@@ -489,7 +491,7 @@ object MAIN_FORM: TMAIN_FORM
         end
         object NAME6: TDBText
           Left = 9
-          Top = 333
+          Top = 326
           Width = 61
           Height = 20
           AutoSize = True
@@ -504,7 +506,7 @@ object MAIN_FORM: TMAIN_FORM
         end
         object NAME7: TDBText
           Left = 9
-          Top = 365
+          Top = 357
           Width = 61
           Height = 20
           AutoSize = True
@@ -519,7 +521,7 @@ object MAIN_FORM: TMAIN_FORM
         end
         object VOTE2: TDBText
           Left = 296
-          Top = 205
+          Top = 204
           Width = 58
           Height = 20
           Alignment = taRightJustify
@@ -536,7 +538,7 @@ object MAIN_FORM: TMAIN_FORM
         end
         object VOTE3: TDBText
           Left = 296
-          Top = 237
+          Top = 234
           Width = 58
           Height = 20
           Alignment = taRightJustify
@@ -553,7 +555,7 @@ object MAIN_FORM: TMAIN_FORM
         end
         object VOTE4: TDBText
           Left = 296
-          Top = 269
+          Top = 265
           Width = 58
           Height = 20
           Alignment = taRightJustify
@@ -569,7 +571,7 @@ object MAIN_FORM: TMAIN_FORM
         end
         object VOTE5: TDBText
           Left = 296
-          Top = 301
+          Top = 295
           Width = 58
           Height = 20
           Alignment = taRightJustify
@@ -585,7 +587,7 @@ object MAIN_FORM: TMAIN_FORM
         end
         object VOTE6: TDBText
           Left = 296
-          Top = 333
+          Top = 326
           Width = 58
           Height = 20
           Alignment = taRightJustify
@@ -601,7 +603,7 @@ object MAIN_FORM: TMAIN_FORM
         end
         object VOTE7: TDBText
           Left = 296
-          Top = 365
+          Top = 356
           Width = 58
           Height = 20
           Alignment = taRightJustify
@@ -675,6 +677,68 @@ object MAIN_FORM: TMAIN_FORM
           FrameSides = []
           DataField = 'ALT_PHONE'
           DataSource = DataModule1.POLLS_DS
+        end
+        object NAME8: TDBText
+          Left = 9
+          Top = 387
+          Width = 61
+          Height = 20
+          AutoSize = True
+          DataField = 'name8'
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -16
+          Font.Name = 'MS Sans Serif'
+          Font.Style = [fsBold]
+          ParentFont = False
+          Visible = False
+        end
+        object VOTE8: TDBText
+          Left = 296
+          Top = 387
+          Width = 58
+          Height = 20
+          Alignment = taRightJustify
+          AutoSize = True
+          DataField = 'vote8'
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -16
+          Font.Name = 'MS Sans Serif'
+          Font.Style = [fsBold]
+          ParentFont = False
+          Visible = False
+        end
+        object NAME9: TDBText
+          Left = 9
+          Top = 418
+          Width = 61
+          Height = 20
+          AutoSize = True
+          DataField = 'name9'
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -16
+          Font.Name = 'MS Sans Serif'
+          Font.Style = [fsBold]
+          ParentFont = False
+          Visible = False
+        end
+        object VOTE9: TDBText
+          Left = 296
+          Top = 417
+          Width = 58
+          Height = 20
+          Alignment = taRightJustify
+          AutoSize = True
+          DataField = 'vote9'
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -16
+          Font.Name = 'MS Sans Serif'
+          Font.Style = [fsBold]
+          ParentFont = False
+          Visible = False
         end
         object Panel2: TPanel
           Left = 8
@@ -9701,6 +9765,14 @@ object MAIN_FORM: TMAIN_FORM
     Align = alBottom
     Caption = 'SB'
     TabOrder = 3
+  end
+  object IntegrityShare: TPBShareMap
+    MaxSize = 4096
+    AutoSynchronize = False
+    MapName = 'PBShareMap-DIQLWVG[BPV'
+    OpenMapWhen = omManual
+    Left = 280
+    Top = 40
   end
   object Timer1: TTimer
     OnTimer = Timer1Timer
