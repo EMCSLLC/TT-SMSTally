@@ -145,9 +145,11 @@ begin
             end;
           SMS_TALLY.Next;
         end;
+
         if OK then
           begin
             cmd := 'EXEC dbo.pr_UpdateFromTallyResults';
+            CMDIntegrity.CommandText := cmd;
               TRY
                 CMDIntegrity.Execute;
               EXCEPT

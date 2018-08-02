@@ -366,7 +366,7 @@ object MAIN_FORM: TMAIN_FORM
     Top = 65
     Width = 409
     Height = 485
-    ActivePage = TabPoll
+    ActivePage = TabCONFIG
     Align = alClient
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clBlack
